@@ -15,7 +15,7 @@ morgan.token('json-content', function getContent(req, res) {
 // 3.8 
 app.use(morgan(':method :url :json-content :response-time ms'))
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
 let persons = [
 
