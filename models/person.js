@@ -1,14 +1,27 @@
 const mongoose = require('mongoose')
 
-const url = 'mongodb://jh-people:FullStackJuuso123@ds229771.mlab.com:29771/heroku_bgwjjhw8'
 
-mongoose.connect(url, {useNewUrlParser: true})
+const url = provess.env.MONGODB_URI
 
-const PersonSchema = mongoose.Schema({
+
+mongoose.connect(url, { useNewUrlParser: true })
+
+const personSchema = mongoose.Schema({
     name: String,
     number: String
 })
 
-const Person = mongoose.model('Person', PersonSchema)
 
-module.exports = Person 
+
+const Person = mongoose.model('Person', personSchema)
+
+// Tehtävä
+personSchema.statics.format = (person) => {
+    return {
+        name: person.name,
+        number: person.number,
+        id: person._id
+    }
+}
+
+module.exports = Person

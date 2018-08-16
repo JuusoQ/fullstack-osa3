@@ -4,6 +4,7 @@ const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
 
+
 const Person = require('./models/person') // 3.13
 
 
@@ -16,14 +17,14 @@ morgan.token('json-content', function getContent(req, res) {
 })
 // app.use(morgan('tiny')) // 3.7
 
-// 3.8 
+// 3.8
 app.use(morgan(':method :url :json-content :response-time ms'))
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3001
 
 
-// poistetaan nämä
-/*
+// poistetaan nämä. Kovakoodattuja henkilöitä tehtävää 3.2. varten
+
 let persons = [
     {
         name: 'Juuso',
@@ -36,9 +37,9 @@ let persons = [
         id: 2
     }
 ]
-*/
 
-/* Tehtävän 3.13 apufunktio, joka määrittelee miten henkilön tiedot esitetään */
+
+/* Tehtävän 3.13 apufunktio, joka määrittelee miten henkilön tiedot esitetään, refaktoroitu myöhemmin */
 
 const formatPerson = (person) => {
     return {
@@ -54,8 +55,15 @@ app.get('/', (req, res) => {
 
 // Tehtävä 2
 app.get('/info', (req, res) => {
+
     let count = persons.length
-    let aika = (new Date()).getTime()
+       
+    /*let count = Person.countDocuments({}, function(err, count) {
+        if(err) return 0
+        return count.length
+    })*/
+    console.log(count)
+    let aika = new Date()
     res.send(`Puhelinluettelossa ${count} henkilön tiedot<br> ${aika}`)
 })
 
@@ -63,12 +71,17 @@ app.get('/api/persons',(req,res) => {
     Person
         .find({})
         .then(people => {
+            console.log(people.map(formatPerson))
             res.json(people.map(formatPerson))
+        })
+        .catch(error => {
+            console.log('Error with GET /api/persons: ', error)
         })
     console.log('GET /api/persons')
 })
 
-// Tehtävä 3
+// Tehtävä 3 - old way
+/*
 app.get('/api/persons/:id', (req, res) => {
     const id = Number(req.params.id)
     const person = persons.find(person => person.id === id)
@@ -79,6 +92,26 @@ app.get('/api/persons/:id', (req, res) => {
         res.status(404).end()
     }
 })
+*/
+
+app.get('/api/persons/:id', (req, res) => {
+    const id = req.params.id
+    console.log(id)
+    Person
+        .findById(id)
+        .then(person => {
+            if(person) {
+                res.json(formatPerson(person))
+            } else {
+                res.status(404).end()
+            }
+        })
+        .catch(error => {
+            res.status(404).end()
+            console.log('Ongelma yksittäisen henkilön hakemisessa')
+        })
+})
+
 
 // tehtävä 4 vanhalla tavalla -
 /*
@@ -91,18 +124,19 @@ app.delete('/api/persons/:id', (req, res) => {
     console.log(persons)
 })*/
 
+// tehtävä 3.16
 app.delete('/api/persons/:id', (req, res) => {
     const id = req.params.id
     console.log('Poistetaan', id)
     Person
-        .deleteOne({_id: id})
+        .deleteOne({ _id: id })
         .then(deletedPerson => {
             console.log('Then-haara',deletedPerson)
             res.status(204).end()
         })
         .catch(error => {
             res.status(404)
-            console.log("Virhe sattui poistossa")
+            console.log('Virhe sattui poistossa')
         })
 })
 
@@ -111,13 +145,13 @@ const generateRandomId = () => {
 }
 
 // tehtävä 5 vanhalla tavalla
-/* 
+/*
 app.post('/api/persons', (req, res) => {
     const body = req.body
     console.log(body.name)
     if (body.name === undefined || body.number === undefined) {
         return res.status(400).json({error: 'Missing data'})
-    } 
+    }
 
     const name = persons.filter(person => person.name === body.name)
     if (name.length > 0 ) {
@@ -139,24 +173,75 @@ app.post('/api/persons', (req, res) => {
 app.post('/api/persons/', (req, res) => {
     const body = req.body
     if (body.name === undefined || body.number === undefined) {
-        return res.status(400).json({error: 'Missing data'})
-    } 
+        return res.status(400).json({ error: 'Missing data' }).end()
+    }
 
     const person = new Person({
         name: body.name,
         number: body.number
     })
 
-    person
-        .save()
-        .then(savedPerson => {
-            res.json(formatPerson(savedPerson))
+    // 3.19*
+
+    Person
+        .find({ name: body.name })
+        .then(result => {
+            console.log('Mitä löysin:',result)
+            if(result.length > 0) {
+                console.log('Tullaanko tähän koskaan',result.length)
+                return res.status(403).json({ error:'User already exists' })
+            }
+        })
+        .then(response => {
+            if(response.statusCode === 403) {
+                console.log('Miten tästä päästään pois')
+                throw 'skip next then'
+            } else {
+                console.log('Lisätään person')
+                person
+                    .save()
+                    .then(savedPerson => {
+                        console.log('Added person', savedPerson)
+                        return res.json(formatPerson(savedPerson)).end()
+
+                    })
+                    .catch(error => {
+                        console.log(error)
+                        return res.status(404).end()
+                    })
+            }
+        })
+        .catch(error => {
+            console.log('Catch promise - rivi 201',error)
+        })
+
+})
+
+// PUT -metodi
+app.put('/api/persons/:id', (req,res) => {
+    const id = req.params.id
+    console.log(id)
+    console.log(req.params.id)
+    const body = req.body
+
+    if (body.name === undefined || body.number === undefined) {
+        res.send(400).json({ error: 'missing data' })
+    }
+
+    const person = {
+        name: body.name,
+        number: body.number
+    }
+
+    Person
+        .findByIdAndUpdate(id, person, { new: true } )
+        .then(updatedPerson => {
+            res.json(formatPerson(updatedPerson)).end()
         })
         .catch(error => {
             console.log(error)
-            res.status(404).end()
+            res.status(404).send({ error: 'virhe' })
         })
-
 })
 
 app.listen(PORT, () => {

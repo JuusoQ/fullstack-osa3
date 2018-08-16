@@ -1,9 +1,9 @@
 const mongoose = require('mongoose')
 
-const dbUrl = 'mongodb://jh-people:FullStackJuuso123@ds229771.mlab.com:29771/heroku_bgwjjhw8'
+const dbUrl = process.env.MONGODB_URI
 
 
-mongoose.connect(dbUrl,{useNewUrlParser: true})
+mongoose.connect(dbUrl,{ useNewUrlParser: true })
 
 const PersonSchema = mongoose.Schema({
     name: String,
