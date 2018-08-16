@@ -58,10 +58,6 @@ app.get('/info', (req, res) => {
 
     let count = persons.length
        
-    /*let count = Person.countDocuments({}, function(err, count) {
-        if(err) return 0
-        return count.length
-    })*/
     console.log(count)
     let aika = new Date()
     res.send(`Puhelinluettelossa ${count} henkilön tiedot<br> ${aika}`)
